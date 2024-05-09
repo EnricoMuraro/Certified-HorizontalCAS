@@ -36,15 +36,15 @@ def add_constraints(network):
     outputVars = network.outputVars[0][0]
 
     # -0.1995 ≤ x0 ≤ −0.1969 (ρ)
-    print(f"{utils.normalize_distance(250)} {utils.normalize_distance(400)}")
+    # print(f"{utils.normalize_distance(250)} {utils.normalize_distance(400)}")
     network.setLowerBound(inputVars[0], utils.normalize_distance(250))
     network.setUpperBound(inputVars[0], utils.normalize_distance(400))
     # 0.0318 ≤ x1 ≤ 0.0637 (θ)
-    print(f"{utils.normalize_angle(0.2)} {utils.normalize_angle(0.4)}")
+    # print(f"{utils.normalize_angle(0.2)} {utils.normalize_angle(0.4)}")
     network.setLowerBound(inputVars[1], utils.normalize_angle(0.2))
     network.setUpperBound(inputVars[1], utils.normalize_angle(0.4))
     # −0.5 ≤ x2 ≤ -0.4995(ψ)
-    print(f"{utils.normalize_angle(-math.pi)} {utils.normalize_angle(-math.pi + 0.005)}")
+    # print(f"{utils.normalize_angle(-math.pi)} {utils.normalize_angle(-math.pi + 0.005)}")
     network.setLowerBound(inputVars[2], utils.normalize_angle(-math.pi))
     network.setUpperBound(inputVars[2], utils.normalize_angle(-math.pi + 0.005))
 
@@ -83,6 +83,13 @@ def sample(cx, cy, N_samples = 10):
     m.optimize()
     assert m.Status == GRB.OPTIMAL
 
+    for i in range(len(s)):
+        if s != 0:
+            break
+        print("Property 1 satisfied")
+        return Inputs, Outputs
+
+    print("Property 1 unsatisfied")
     for i in range(len(cy)):
         cy[i] = cy[i] + s[i].X
 

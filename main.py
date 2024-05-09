@@ -14,6 +14,7 @@ from torch.utils.data import TensorDataset, DataLoader
 EPOCHS = 1000
 TRAINING_DATA_FOLDER = "TrainingData"
 TRAINED_NETWORKS_FOLDER = "TrainedNetworks"
+CERTIFIED_NETWORKS_FOLDER = "CertifiedNetworks"
 CHECKPOINTS_FOLDER = "Checkpoints"
 
 
@@ -191,20 +192,25 @@ def train_ACAS_network(pra_tau):
     return best_model
 
 
-def certify_model(model, X, y, p, max_attempts=100):
+def certify_model(model, X, y, p, max_attempts=300, include_training_data = True):
     X = X.tolist()
     y = y.tolist()
     attempts = max_attempts
-    sample_x, sample_y = marabou_solver.marabou_solve(model, property_number=p)
+    sample_x, sample_y = marabou_solver.marabou_solve(model, property_numbers=p)
     if not sample_x:
-        print(f"Certified after {max_attempts-attempts} attempts")
-        return model
+        # print(f"Certified after {max_attempts-attempts} attempts")
+        return model, max_attempts - attempts, True
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Using device:', device)
+    # print('Using device:', device)
 
-    Inputs = X + sample_x
-    Outputs = y + sample_y
+    Inputs = sample_x
+    Outputs = sample_y
+    if(include_training_data):
+        Inputs += X
+        Outputs += y
+
+
     while attempts > 0:
 
         X_train_tensor = torch.tensor(Inputs, dtype=torch.float32, device=device)
@@ -220,42 +226,75 @@ def certify_model(model, X, y, p, max_attempts=100):
             loss.backward()
             optimizer.step()
 
-        sample_x, sample_y = marabou_solver.marabou_solve(model, property_number=p)
+        sample_x, sample_y = marabou_solver.marabou_solve(model, property_numbers=p)
 
         if not sample_x:
-            print(f"Certified after {max_attempts - attempts} attempts")
-            return model
+            # print(f"Certified after {max_attempts-attempts} attempts")
+            return model, max_attempts - attempts, True
 
         Inputs += sample_x
         Outputs += sample_y
         attempts -= 1
 
+    return model, attempts, False
 
-if __name__ == '__main__':
-    previous_advisories = ["0", "1", "2", "3", "4"]
-    taus = ["00", "05", "10", "15", "20", "30", "40", "60"]
+def certify_ACAS_network(pra_tau):
+    previous_advisory, tau = pra_tau
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using device:', device)
 
-    combinations = [(pra, tau) for pra in previous_advisories for tau in taus]
+    dataset_filename = f"{TRAINING_DATA_FOLDER}/HCAS_rect_TrainingData_v6_pra{previous_advisory}_tau{tau}.h5"
 
-    # model = train_ACAS_network(("0", "00"))
-    model = torch.load("Checkpoints/HCAS_TrainedNetwork_pra0_tau00.pt", map_location=torch.device('cpu'))
-    X, y = load_dataset("TrainingData/HCAS_rect_TrainingData_v6_pra0_tau00.h5")
+    model = torch.load(f"{CHECKPOINTS_FOLDER}/HCAS_TrainedNetwork_pra{previous_advisory}_tau{tau}.pt", map_location=torch.device('cpu'))
+    X, y = load_dataset(f"{TRAINING_DATA_FOLDER}/HCAS_rect_TrainingData_v6_pra{previous_advisory}_tau{tau}.h5")
     X_tensor = torch.tensor(X, dtype=torch.float32)
 
     y_pred = model(X_tensor)
     y_pred = y_pred.numpy(force=True)
     acc_before = accuracy(y_pred, y)
 
-    model = certify_model(model, X, y, 1)
+    model, attempts, certified = certify_model(model, X, y, PROPERTIES, include_training_data=True)
+
     y_pred = model(X_tensor)
     y_pred = y_pred.numpy(force=True)
     acc_after = accuracy(y_pred, y)
+    if certified:
+        # print(f"accuracy before certification: {acc_before}")
+        # print(f"accuracy after certification: {acc_after}")
+        properties_folder = ""
+        for p in PROPERTIES:
+            properties_folder += str(p)
 
-    print(f"accuracy before certification: {acc_before}")
-    print(f"accuracy after certification: {acc_after}")
-    torch.save(model, 'best-model-certified.pt')
+        torch.save(model, f"{CERTIFIED_NETWORKS_FOLDER}/p{properties_folder}/HCAS_CertifiedNetwork_pra{previous_advisory}_tau{tau}_p{properties_folder}.pt")
+        print(f"network pra:{previous_advisory}, tau:{tau} certified. {acc_before} {acc_after}")
+    else:
+        torch.save(model, "failed.pt")
+        print(f"network pra:{previous_advisory}, tau:{tau} NOT certified.")
+
+    stat = {"pra": previous_advisory, "tau": tau, "acc_before": acc_before, "acc_after": acc_after, "attempts": attempts}
+    return stat
+
+
+PROPERTIES = [1,2,3,5]
+if __name__ == '__main__':
+    previous_advisories = ["0", "1", "2", "3", "4"]
+    taus = ["00", "05", "10", "15", "20", "30", "40", "60"]
+
+    combinations = [(pra, tau) for pra in previous_advisories for tau in taus]
 
     # with Pool(12) as p:
     #     p.map(train_ACAS_network, combinations)
+    """
+    with Pool(12) as p:
+        stats = p.map(certify_ACAS_network, combinations)
+        with open("certification stats p13.txt", "a") as stats_file:
+            for stat in stats:
+                stats_file.write(f"{stat} \n")
+    """
 
-    # model = torch.load('best-model.pt')
+    stats = certify_ACAS_network(("0", "00"))
+    print(stats)
+
+    # for combination in combinations:
+    #     stats = certify_ACAS_network(combination)
+    #     print(stats)

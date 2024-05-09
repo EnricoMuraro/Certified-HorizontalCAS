@@ -45,6 +45,40 @@ def denormalized_model_output(model_filename, inputs, psi):
     return denormalize_data(inputs, outputs, psi)
 
 
+def rect_outline(rho1, theta1, rho2, theta2):
+    points_per_side = 100
+    rhos = np.linspace(rho1, rho2, points_per_side)
+    thetas = np.linspace(theta1, theta2, points_per_side)
+
+    outline_theta = np.ones(points_per_side)*theta1
+    outline_rho = rhos
+
+    outline_theta = np.concatenate((outline_theta, np.ones(points_per_side)*theta2))
+    outline_rho = np.concatenate((outline_rho, rhos))
+
+    outline_theta = np.concatenate((outline_theta, thetas))
+    outline_rho = np.concatenate((outline_rho, np.ones(points_per_side)*rho1))
+
+    outline_theta = np.concatenate((outline_theta, thetas))
+    outline_rho = np.concatenate((outline_rho, np.ones(points_per_side) * rho2))
+
+    x = (outline_rho[i] * math.cos(outline_theta[i]) for i in range(len(outline_theta)))
+    y = (outline_rho[i] * math.sin(outline_theta[i]) for i in range(len(outline_theta)))
+
+    return np.array(list(x)), np.array(list(y))
+
+def property_outline(p):
+    if p == 1:
+        return rect_outline(250, 0.2, 400, 0.4)
+    if p == 2:
+        return rect_outline(1500, -0.06, 1800, 0.06)
+    if p == 3:
+        return rect_outline(36000, 0.7, 60760, math.pi)
+    if p == 4:
+        return rect_outline(2000, 0.7, 5000, math.pi)
+    if p == 5:
+        return rect_outline(43000, -1, 50000, 1)
+
 def test():
 
     rho = np.linspace(-0.2, 0.8, 1000)
@@ -119,17 +153,7 @@ def test2():
     print(x, y)
 
 
-def contour_plot():
-    inputs, outputs = main.load_dataset("TrainingData/HCAS_rect_TrainingData_v6_pra0_tau00.h5")
-
-    # x, y, advisories = denormalized_model_output('best-model-certified.pt', inputs, 0.5)
-    x, y, advisories = denormalize_data(inputs, outputs, 0.5)
-
-    x_lower = 0
-    x_higher = 3000
-    y_lower = -1500
-    y_higher = 1500
-
+def crop_coords(x, y, advisories, x_lower, x_higher, y_lower, y_higher):
     crop = np.where((y < y_higher) & (y > y_lower))
     x = x[crop]
     y = y[crop]
@@ -140,15 +164,35 @@ def contour_plot():
     y = y[crop]
     advisories = advisories[crop]
 
+    return x, y, advisories
+
+
+def contour_plot(model_filename):
+    inputs, outputs = main.load_dataset("TrainingData/HCAS_rect_TrainingData_v6_pra0_tau00.h5")
+
+    x, y, advisories = denormalized_model_output(model_filename, inputs, 0.5)
+    # x, y, advisories = denormalize_data(inputs, outputs, 0.5)
+
+    x_lower = 0
+    x_higher = 2500
+    y_lower = -1000
+    y_higher = 1000
+    x, y, advisories = crop_coords(x, y, advisories, x_lower, x_higher, y_lower, y_higher)
     xi = np.linspace(x_lower, x_higher, 1000)
     yi = np.linspace(y_lower, y_higher, 1000)
 
     zi = griddata((x, y), advisories, (xi[None, :], yi[:, None]), method='nearest')
 
+    #rectangle outline
+    outline_x, outline_y = property_outline(property_number)
+    outline_x, outline_y, _ = crop_coords(outline_x, outline_y, [], x_lower, x_higher, y_lower, y_higher)
+
     fig, ax = plt.subplots()
     cs = ax.contourf(xi, yi, zi, 5)
     handles, labels = cs.legend_elements()
     ax.legend(handles, ["COC", "WL", "WR", "SL", "SR"])
+
+    ax.scatter(outline_x, outline_y, color="r", s=1, alpha=0.8)
     plt.show()
 
 
@@ -170,30 +214,47 @@ def scatter_plot():
     plt.show()
 
 
-def contourf_all_points():
-    rho = np.linspace(-0.2, 0.8, 1000)
-    theta = np.linspace(-0.5, 0.5, 1000)
-
+def contourf_all_points(model_filename):
+    points = 1000
+    rho = np.linspace(-0.2, 0.8, points)
+    theta = np.linspace(-0.5, 0.5, points)
     xy = np.array(np.meshgrid(rho, theta)).T.reshape(-1, 2)
-    psi = np.ones(1000000) * 0.5
+    psi = np.ones(points*points) * -0.5
     inputs = np.stack((xy[:, 0], xy[:, 1], psi), axis=-1)
 
-    x, y, advisories = denormalized_model_output('best-model.pt', inputs, 0.5)
-
-    xi = np.linspace(0, 50000, 1000)
-    yi = np.linspace(-15000, 15000, 1000)
+    x, y, advisories = denormalized_model_output(model_filename, inputs, -0.5)
+    x_lower = 0
+    x_higher = 50000
+    y_lower = -30000
+    y_higher = 30000
+    x, y, advisories = crop_coords(x, y, advisories, x_lower, x_higher, y_lower, y_higher)
+    xi = np.linspace(x_lower, x_higher, points)
+    yi = np.linspace(y_lower, y_higher, points)
 
     zi = griddata((x, y), advisories, (xi[None, :], yi[:, None]), method='nearest')
 
+    #rectangle outline
+    outline_x, outline_y = property_outline(property_number)
+    outline_x, outline_y, _ = crop_coords(outline_x, outline_y, outline_y, x_lower, x_higher, y_lower, y_higher)
+
+    unique_values = list(set(advisories))
+    legend_labels = ["COC", "WL", "WR", "SL", "SR"]
+    legend_labels = list(legend_labels[value] for value in unique_values)
+
     fig, ax = plt.subplots()
-    cs = ax.contourf(xi, yi, zi, 5)
+    cs = ax.contourf(xi, yi, zi, levels=len(unique_values))
     handles, labels = cs.legend_elements()
-    ax.legend(handles, ["COC", "WL", "WR", "SL", "SR"])
+    ax.legend(handles, legend_labels)
+    ax.scatter(outline_x, outline_y, color="r", s=1, alpha=0.5)
     plt.show()
 
 
+property_number = 5
 if __name__ == '__main__':
-    contour_plot()
+
     # scatter_plot()
-    # contourf_all_points()
+    model = "Checkpoints/HCAS_TrainedNetwork_pra0_tau00.pt"
+    model_certified = "CertifiedNetworks/p1235/HCAS_CertifiedNetwork_pra0_tau00_p1235.pt"
+    # contour_plot(model)
+    contourf_all_points(model_certified)
 
