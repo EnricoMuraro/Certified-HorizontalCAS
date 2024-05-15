@@ -254,7 +254,7 @@ if __name__ == '__main__':
 
     # scatter_plot()
     model = "Checkpoints/HCAS_TrainedNetwork_pra0_tau00.pt"
-    model_certified = "CertifiedNetworks/p1235/HCAS_CertifiedNetwork_pra0_tau00_p1235.pt"
+    model_certified = "CertifiedNetworks/p4/HCAS_CertifiedNetwork_pra2_tau00_p4.pt"
     # contour_plot(model)
-    contourf_all_points(model_certified)
+    contourf_all_points(model)
 

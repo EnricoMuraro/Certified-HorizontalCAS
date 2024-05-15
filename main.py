@@ -192,7 +192,7 @@ def train_ACAS_network(pra_tau):
     return best_model
 
 
-def certify_model(model, X, y, p, max_attempts=300, include_training_data = True):
+def certify_model(model, X, y, p, max_attempts=300, include_training_data=True):
     X = X.tolist()
     y = y.tolist()
     attempts = max_attempts
@@ -275,7 +275,7 @@ def certify_ACAS_network(pra_tau):
     return stat
 
 
-PROPERTIES = [1,2,3,5]
+PROPERTIES = [4]
 if __name__ == '__main__':
     previous_advisories = ["0", "1", "2", "3", "4"]
     taus = ["00", "05", "10", "15", "20", "30", "40", "60"]
