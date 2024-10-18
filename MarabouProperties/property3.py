@@ -7,7 +7,7 @@ from maraboupy import Marabou, MarabouCore
 import utils
 
 """
-For a far away intruder, the network advises COC.
+For a far away intruder (on the left), the network advises COC.
 
 Input ranges: 36000 ≤ ρ ≤ 60760, 0.7 ≤ θ ≤ 3.141592, −3.141592 ≤ ψ ≤ −3.141592 + 0.01
 

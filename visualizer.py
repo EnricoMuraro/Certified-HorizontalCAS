@@ -75,10 +75,15 @@ def property_outline(p):
     if p == 3:
         return rect_outline(36000, 0.7, 60760, math.pi)
     if p == 4:
-        return rect_outline(2000, 0.7, 5000, math.pi)
+        return rect_outline(2000, -0.7, 5000, -math.pi)
     if p == 5:
         return rect_outline(43000, -1, 50000, 1)
-
+    if p == 6:
+        return rect_outline(250, -0.4, 400, -0.2)
+    if p == 7:
+        return rect_outline(36000, -math.pi, 60760, -0.7)
+    if p == 8:
+        return rect_outline(2000, 0.7, 5000, math.pi)
 def test():
 
     rho = np.linspace(-0.2, 0.8, 1000)
@@ -244,17 +249,19 @@ def contourf_all_points(model_filename):
     fig, ax = plt.subplots()
     cs = ax.contourf(xi, yi, zi, levels=len(unique_values))
     handles, labels = cs.legend_elements()
-    ax.legend(handles, legend_labels)
+    legend_handles = list(handles[value] for value in unique_values)
+    ax.legend(legend_handles, legend_labels)
     ax.scatter(outline_x, outline_y, color="r", s=1, alpha=0.5)
     plt.show()
 
 
-property_number = 5
+property_number = 4
 if __name__ == '__main__':
-
+    pra = "2"
+    tau = "00"
     # scatter_plot()
-    model = "Checkpoints/HCAS_TrainedNetwork_pra0_tau00.pt"
-    model_certified = "CertifiedNetworks/p4/HCAS_CertifiedNetwork_pra2_tau00_p4.pt"
+    model = f"Checkpoints/HCAS_TrainedNetwork_pra{pra}_tau{tau}.pt"
+    model_certified = f"CertifiedNetworks/p{property_number}/HCAS_CertifiedNetwork_pra{pra}_tau{tau}_p{property_number}.pt"
     # contour_plot(model)
-    contourf_all_points(model)
+    contourf_all_points(model_certified)
 

@@ -275,7 +275,7 @@ def certify_ACAS_network(pra_tau):
     return stat
 
 
-PROPERTIES = [4]
+PROPERTIES = [1]
 if __name__ == '__main__':
     previous_advisories = ["0", "1", "2", "3", "4"]
     taus = ["00", "05", "10", "15", "20", "30", "40", "60"]
