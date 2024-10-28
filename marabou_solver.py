@@ -44,8 +44,8 @@ def marabou_solve(model, property_numbers):
         # counterexample found
         if sat == "sat":
             # vals.values() contains all the internal variable values for the counterexample
-            counterexample_x = list(vals.values())[:3]
-            counterexample_y = list(vals.values())[3:8]
+            counterexample_x = [vals[i] for i in network.inputVars[0][0]]
+            counterexample_y = [vals[i] for i in network.outputVars[0][0]]
             sx, sy = marabou_properties.generate_samples(counterexample_x, counterexample_y, p)
             sample_x += sx
             sample_y += sy
